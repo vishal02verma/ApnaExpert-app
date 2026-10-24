@@ -151,6 +151,7 @@ class FirestoreService {
         'status': booking.status.name,
         'scheduledTime': booking.scheduledTime,
         'securityOtp': booking.securityOtp,
+        if (booking.problemPhoto != null) 'problemPhoto': booking.problemPhoto,
         'createdAt': booking.createdAt.toIso8601String(),
         'completedAt': booking.completedAt?.toIso8601String(),
       });

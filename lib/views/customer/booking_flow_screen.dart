@@ -1,4 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../models/booking_request.dart';
 import '../../models/worker_model.dart';
@@ -29,6 +32,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   String _urgency = 'Normal';
   String _scheduledSlot = 'Today (Immediate)';
   bool _hasPhotoAttached = false;
+  String? _problemPhotoBase64;
+  Uint8List? _problemPhotoBytes;
+  String? _problemPhotoName;
+  bool _isPickingPhoto = false;
 
   // Form Controllers for Step 3
   final TextEditingController _addressController = TextEditingController();
@@ -406,73 +413,141 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
             const SizedBox(height: 16),
 
-            // Photo attachment simulation
-            InkWell(
-              onTap: () {
-                setState(() {
-                  _hasPhotoAttached = !_hasPhotoAttached;
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      _hasPhotoAttached
-                          ? 'Photo attached: issue_photo.jpg (1.4 MB)'
-                          : 'Photo removed',
-                    ),
-                    duration: const Duration(seconds: 1),
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
+            // Photo attachment widget
+            if (_hasPhotoAttached && _problemPhotoBytes != null)
+              Container(
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: _hasPhotoAttached
-                      ? AppTheme.secondaryColor.withValues(alpha: 0.1)
-                      : Colors.grey.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: _hasPhotoAttached
-                        ? AppTheme.secondaryColor
-                        : Colors.grey.shade300,
+                    color: AppTheme.secondaryColor.withValues(alpha: 0.6),
+                    width: 1.5,
                   ),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      _hasPhotoAttached
-                          ? Icons.check_circle
-                          : Icons.add_a_photo_outlined,
-                      color: _hasPhotoAttached
-                          ? AppTheme.secondaryColor
-                          : primary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _hasPhotoAttached
-                            ? '1 Photo Attached (issue_photo.jpg)'
-                            : 'Attach Photo of Problem (Optional)',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: _hasPhotoAttached
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          color: _hasPhotoAttached
-                              ? AppTheme.secondaryColor
-                              : null,
-                        ),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.memory(
+                        _problemPhotoBytes!,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
                       ),
                     ),
-                    if (_hasPhotoAttached)
-                      const Icon(Icons.close, size: 16, color: Colors.grey),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.check_circle_rounded, color: AppTheme.secondaryColor, size: 16),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Photo Attached',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.secondaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _problemPhotoName ?? 'problem_issue.jpg',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '${(_problemPhotoBytes!.length / 1024).toStringAsFixed(0)} KB • Ready to submit',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      tooltip: 'Change Photo',
+                      onPressed: () => _showProblemPhotoPickerSheet(context, primary),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      tooltip: 'Remove Photo',
+                      onPressed: () {
+                        setState(() {
+                          _hasPhotoAttached = false;
+                          _problemPhotoBase64 = null;
+                          _problemPhotoBytes = null;
+                          _problemPhotoName = null;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Attached photo removed'),
+                            behavior: SnackBarBehavior.floating,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
+              )
+            else
+              InkWell(
+                onTap: _isPickingPhoto
+                    ? null
+                    : () => _showProblemPhotoPickerSheet(context, primary),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.grey.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF334155) : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      _isPickingPhoto
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              Icons.add_a_photo_outlined,
+                              color: primary,
+                              size: 22,
+                            ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _isPickingPhoto
+                              ? 'Opening photo selector...'
+                              : 'Attach Photo of Problem (Optional)',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? Colors.white54 : Colors.grey),
+                    ],
+                  ),
+                ),
               ),
-            ),
 
             const SizedBox(height: 24),
             SizedBox(
@@ -492,6 +567,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                     _urgency,
                   );
                   bookingProvider.setDraftScheduledTime(_scheduledSlot);
+                  bookingProvider.setDraftProblemPhoto(
+                    _hasPhotoAttached ? _problemPhotoBase64 : null,
+                  );
                   setState(() => _currentStep = 3);
                 },
                 child: const Row(
@@ -508,6 +586,173 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         ),
       ),
     );
+  }
+
+  void _showProblemPhotoPickerSheet(BuildContext context, Color primary) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Attach Photo of Problem',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Text(
+                  'Photos help the specialist arrive with the exact equipment & spare parts needed.',
+                  style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                ),
+              ),
+              const Divider(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: Colors.blue),
+                ),
+                title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                subtitle: const Text('Select a photo from device storage', style: TextStyle(fontSize: 12)),
+                onTap: () => _pickPhoto(ImageSource.gallery),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondaryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: AppTheme.secondaryColor),
+                ),
+                title: const Text('Take Photo with Camera', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                subtitle: const Text('Capture the damaged or leaking spot now', style: TextStyle(fontSize: 12)),
+                onTap: () => _pickPhoto(ImageSource.camera),
+              ),
+              if (_hasPhotoAttached) ...[
+                const Divider(),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                  ),
+                  title: const Text('Remove Attached Photo', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Delete photo from this booking request', style: TextStyle(fontSize: 12)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      _hasPhotoAttached = false;
+                      _problemPhotoBase64 = null;
+                      _problemPhotoBytes = null;
+                      _problemPhotoName = null;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Attached photo removed'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    Navigator.pop(context);
+    setState(() => _isPickingPhoto = true);
+    try {
+      final picker = ImagePicker();
+      final XFile? picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 80,
+      );
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        final base64String = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        setState(() {
+          _problemPhotoBytes = bytes;
+          _problemPhotoName = picked.name;
+          _problemPhotoBase64 = base64String;
+          _hasPhotoAttached = true;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Photo attached: ${picked.name}')),
+                ],
+              ),
+              backgroundColor: AppTheme.secondaryColor,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [BookingFlow] Error picking photo: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not access photo: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPickingPhoto = false);
+    }
   }
 
   // STEP 3: LOCATION
@@ -1006,6 +1251,22 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               subtitle: Text(bookingProvider.draftDescription),
               leading: Icon(Icons.article_rounded, color: primary),
             ),
+            if (bookingProvider.draftProblemPhoto != null)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Attached Photo'),
+                subtitle: const Text(
+                  '1 Photo attached (Viewable by technician)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryColor,
+                  ),
+                ),
+                leading: const Icon(
+                  Icons.photo_camera_rounded,
+                  color: AppTheme.secondaryColor,
+                ),
+              ),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Service Address'),

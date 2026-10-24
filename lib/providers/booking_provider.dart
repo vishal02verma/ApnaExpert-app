@@ -21,6 +21,7 @@ class BookingProvider extends ChangeNotifier {
   String _draftScheduledTime = 'Today (Immediate)';
   String _draftPromoCode = '';
   double _draftDiscount = 0.0;
+  String? _draftProblemPhoto;
 
   // Getters for draft flow
   String? get draftCategoryId => _draftCategoryId;
@@ -37,6 +38,7 @@ class BookingProvider extends ChangeNotifier {
   String get draftPromoCode => _draftPromoCode;
   double get draftDiscount => _draftDiscount;
   double get draftFinalCost => (_draftEstimatedCost - _draftDiscount).clamp(0.0, double.infinity);
+  String? get draftProblemPhoto => _draftProblemPhoto;
 
   // Setters for draft steps
   void setDraftCategory(String id, String title, double basePrice) {
@@ -56,6 +58,11 @@ class BookingProvider extends ChangeNotifier {
 
   void setDraftScheduledTime(String time) {
     _draftScheduledTime = time;
+    notifyListeners();
+  }
+
+  void setDraftProblemPhoto(String? photo) {
+    _draftProblemPhoto = photo;
     notifyListeners();
   }
 
@@ -124,6 +131,7 @@ class BookingProvider extends ChangeNotifier {
     _draftScheduledTime = 'Today (Immediate)';
     _draftPromoCode = '';
     _draftDiscount = 0.0;
+    _draftProblemPhoto = null;
     notifyListeners();
   }
 
@@ -293,6 +301,7 @@ class BookingProvider extends ChangeNotifier {
       paymentMethod: _draftPaymentMethod,
       scheduledTime: _draftScheduledTime,
       securityOtp: randomOtp,
+      problemPhoto: _draftProblemPhoto,
       status: BookingStatus.requested,
       createdAt: DateTime.now(),
     );

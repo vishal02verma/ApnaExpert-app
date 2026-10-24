@@ -157,6 +157,7 @@ class BookingRequest {
   final String scheduledTime;
   final String securityOtp;
   final String? cancellationReason;
+  final String? problemPhoto;
 
   BookingRequest({
     required this.id,
@@ -182,6 +183,7 @@ class BookingRequest {
     this.scheduledTime = 'Today (Immediate)',
     this.securityOtp = '4821',
     this.cancellationReason,
+    this.problemPhoto,
   });
 
   double get finalCost =>
@@ -211,6 +213,7 @@ class BookingRequest {
     String? scheduledTime,
     String? securityOtp,
     String? cancellationReason,
+    String? problemPhoto,
   }) {
     return BookingRequest(
       id: id ?? this.id,
@@ -236,6 +239,7 @@ class BookingRequest {
       scheduledTime: scheduledTime ?? this.scheduledTime,
       securityOtp: securityOtp ?? this.securityOtp,
       cancellationReason: cancellationReason ?? this.cancellationReason,
+      problemPhoto: problemPhoto ?? this.problemPhoto,
     );
   }
 }

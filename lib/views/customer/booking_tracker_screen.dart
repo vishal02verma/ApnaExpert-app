@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/booking_request.dart';
@@ -539,6 +540,41 @@ class _BookingTrackerScreenState extends State<BookingTrackerScreen> {
                       fontSize: 13,
                     ),
                   ),
+                  if (booking.problemPhoto != null) ...[
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () => _showPhotoPreview(context, booking.problemPhoto!),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.secondaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.secondaryColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: _buildPhotoWidget(booking.problemPhoto!, width: 28, height: 28),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'View Attached Problem Photo',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.secondaryColor,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.open_in_new, size: 14, color: AppTheme.secondaryColor),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   const Divider(),
 
@@ -935,4 +971,52 @@ class _BookingTrackerScreenState extends State<BookingTrackerScreen> {
       ),
     );
   }
+
+  Widget _buildPhotoWidget(String photoStr, {double? width, double? height}) {
+    if (photoStr.startsWith('data:image')) {
+      final commaIdx = photoStr.indexOf(',');
+      final base64Data = commaIdx != -1 ? photoStr.substring(commaIdx + 1) : photoStr;
+      return Image.memory(base64Decode(base64Data), width: width, height: height, fit: BoxFit.cover);
+    } else if (photoStr.startsWith('http://') || photoStr.startsWith('https://')) {
+      return Image.network(photoStr, width: width, height: height, fit: BoxFit.cover);
+    } else {
+      return const Icon(Icons.broken_image, size: 24);
+    }
+  }
+
+  void _showPhotoPreview(BuildContext context, String photoStr) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Attached Problem Photo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 350),
+                child: _buildPhotoWidget(photoStr),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
