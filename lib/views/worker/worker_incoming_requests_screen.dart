@@ -115,7 +115,7 @@ class _WorkerIncomingRequestsScreenState
     final user = authProvider.currentUser;
     final worker = serviceState.getWorkerForUser(user);
 
-    final allJobs = bookingProvider.getWorkerBookings(worker.id);
+    final allJobs = bookingProvider.getWorkerBookings(worker.id, categoryId: worker.categoryId);
     final filteredJobs = allJobs.where((b) {
       if (_selectedFilter == 'Pending') {
         return b.status == BookingStatus.requested;
@@ -357,6 +357,9 @@ class _WorkerIncomingRequestsScreenState
                                           bookingProvider.updateBookingStatus(
                                             booking.id,
                                             BookingStatus.accepted,
+                                            workerId: worker.id,
+                                            workerName: worker.name,
+                                            workerPhone: worker.phone,
                                           );
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             const SnackBar(

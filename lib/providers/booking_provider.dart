@@ -1,11 +1,69 @@
 
 
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/booking_request.dart';
 import '../services/firestore_service.dart';
 
 class BookingProvider extends ChangeNotifier {
+  StreamSubscription? _bookingsSubscription;
+
+  BookingProvider() {
+    _initFirestoreSync();
+  }
+
+  void _initFirestoreSync() {
+    try {
+      final stream = FirestoreService.streamBookings();
+      if (stream == null) {
+        debugPrint('⚠️ [BookingProvider] Firestore stream not ready yet. Retrying in 2 seconds...');
+        Future.delayed(const Duration(seconds: 2), _initFirestoreSync);
+        return;
+      }
+
+      _bookingsSubscription?.cancel();
+      _bookingsSubscription = stream.listen((snapshot) {
+        debugPrint('🔥 [BookingProvider] Realtime snapshot received: ${snapshot.docs.length} bookings');
+
+        final firestoreList = <BookingRequest>[];
+        for (var doc in snapshot.docs) {
+          try {
+            firestoreList.add(BookingRequest.fromMap(doc.data()));
+          } catch (e) {
+            debugPrint('⚠️ [BookingProvider] Failed to parse booking doc ${doc.id}: $e');
+          }
+        }
+
+        final Map<String, BookingRequest> map = {};
+        // Retain initial fallback/demo bookings
+        for (var b in _bookings) {
+          map[b.id] = b;
+        }
+        // Firestore bookings override/add to map (cloud is source of truth across devices)
+        for (var b in firestoreList) {
+          map[b.id] = b;
+        }
+
+        _bookings.clear();
+        _bookings.addAll(map.values.toList());
+        _bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        notifyListeners();
+      }, onError: (err) {
+        debugPrint('❌ [BookingProvider] Firestore stream error: $err');
+      });
+    } catch (e) {
+      debugPrint('⚠️ [BookingProvider] _initFirestoreSync error: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _bookingsSubscription?.cancel();
+    super.dispose();
+  }
+
   // Active draft state during wizard creation
   String? _draftCategoryId;
   String? _draftCategoryTitle;
@@ -255,6 +313,7 @@ class BookingProvider extends ChangeNotifier {
     } else {
       _chatMessages[bookingId] = [msg];
     }
+    FirestoreService.sendChatMessage(bookingId, msg);
     notifyListeners();
   }
 
@@ -265,13 +324,24 @@ class BookingProvider extends ChangeNotifier {
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
-  List<BookingRequest> getWorkerBookings(String workerId) {
-    return _bookings.where((b) => b.selectedWorkerId == workerId).toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  List<BookingRequest> getWorkerBookings(String workerId, {String? categoryId}) {
+    return _bookings.where((b) {
+      if (b.selectedWorkerId == workerId) return true;
+      // Auto-assigned or unassigned jobs in this category or open to all
+      if (b.selectedWorkerId == null || b.selectedWorkerId == 'wrk_auto' || b.selectedWorkerId!.isEmpty) {
+        if (categoryId != null && categoryId.isNotEmpty) {
+          return b.categoryId == categoryId;
+        }
+        return true;
+      }
+      return false;
+    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
-  List<BookingRequest> getWorkerPendingRequests(String workerId) {
-    return _bookings.where((b) => b.selectedWorkerId == workerId && b.status == BookingStatus.requested).toList();
+  List<BookingRequest> getWorkerPendingRequests(String workerId, {String? categoryId}) {
+    return getWorkerBookings(workerId, categoryId: categoryId)
+        .where((b) => b.status == BookingStatus.requested)
+        .toList();
   }
 
   // Create new request (Step 5)
@@ -314,7 +384,13 @@ class BookingProvider extends ChangeNotifier {
   }
 
   // Worker Accepts Request (Step 6)
-  void updateBookingStatus(String bookingId, BookingStatus newStatus) {
+  void updateBookingStatus(
+    String bookingId,
+    BookingStatus newStatus, {
+    String? workerId,
+    String? workerName,
+    String? workerPhone,
+  }) {
     final index = _bookings.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
       DateTime? completedTime = _bookings[index].completedAt;
@@ -325,8 +401,19 @@ class BookingProvider extends ChangeNotifier {
       _bookings[index] = _bookings[index].copyWith(
         status: newStatus,
         completedAt: completedTime,
+        selectedWorkerId: workerId ?? _bookings[index].selectedWorkerId,
+        selectedWorkerName: workerName ?? _bookings[index].selectedWorkerName,
+        selectedWorkerPhone: workerPhone ?? _bookings[index].selectedWorkerPhone,
       );
-      FirestoreService.updateBookingStatus(bookingId, newStatus);
+
+      FirestoreService.updateBookingStatus(
+        bookingId,
+        newStatus,
+        workerId: workerId,
+        workerName: workerName,
+        workerPhone: workerPhone,
+        completedAt: completedTime,
+      );
       notifyListeners();
     }
   }
@@ -339,7 +426,11 @@ class BookingProvider extends ChangeNotifier {
         status: BookingStatus.cancelled,
         cancellationReason: reason,
       );
-      FirestoreService.updateBookingStatus(bookingId, BookingStatus.cancelled);
+      FirestoreService.updateBookingStatus(
+        bookingId,
+        BookingStatus.cancelled,
+        cancellationReason: reason,
+      );
       notifyListeners();
     }
   }
@@ -365,6 +456,7 @@ class BookingProvider extends ChangeNotifier {
         status: BookingStatus.reviewed,
         review: review,
       );
+      FirestoreService.updateBookingReview(bookingId, review);
       notifyListeners();
     }
   }

@@ -131,30 +131,7 @@ class FirestoreService {
     if (db == null) return false;
     try {
       debugPrint('🔥 [Firestore] Creating booking in "bookings/${booking.id}"...');
-      await db.collection('bookings').doc(booking.id).set({
-        'id': booking.id,
-        'customerId': booking.customerId,
-        'customerName': booking.customerName,
-        'customerPhone': booking.customerPhone,
-        'categoryId': booking.categoryId,
-        'categoryTitle': booking.categoryTitle,
-        'problemDescription': booking.problemDescription,
-        'urgency': booking.urgency,
-        'address': booking.address,
-        'landmark': booking.landmark,
-        'selectedWorkerId': booking.selectedWorkerId,
-        'selectedWorkerName': booking.selectedWorkerName,
-        'selectedWorkerPhone': booking.selectedWorkerPhone,
-        'estimatedCost': booking.estimatedCost,
-        'discountAmount': booking.discountAmount,
-        'paymentMethod': booking.paymentMethod,
-        'status': booking.status.name,
-        'scheduledTime': booking.scheduledTime,
-        'securityOtp': booking.securityOtp,
-        if (booking.problemPhoto != null) 'problemPhoto': booking.problemPhoto,
-        'createdAt': booking.createdAt.toIso8601String(),
-        'completedAt': booking.completedAt?.toIso8601String(),
-      });
+      await db.collection('bookings').doc(booking.id).set(booking.toMap());
 
       lastError = null;
       debugPrint('✅ [Firestore] Booking created successfully: ${booking.id}');
@@ -167,14 +144,29 @@ class FirestoreService {
     }
   }
 
-  static Future<bool> updateBookingStatus(String bookingId, BookingStatus status) async {
+  static Future<bool> updateBookingStatus(
+    String bookingId,
+    BookingStatus status, {
+    String? workerId,
+    String? workerName,
+    String? workerPhone,
+    DateTime? completedAt,
+    String? cancellationReason,
+  }) async {
     final db = _db;
     if (db == null) return false;
     try {
-      await db.collection('bookings').doc(bookingId).update({
+      final updateData = <String, dynamic>{
         'status': status.name,
         'updatedAt': DateTime.now().toIso8601String(),
-      });
+      };
+      if (workerId != null && workerId.isNotEmpty) updateData['selectedWorkerId'] = workerId;
+      if (workerName != null && workerName.isNotEmpty) updateData['selectedWorkerName'] = workerName;
+      if (workerPhone != null && workerPhone.isNotEmpty) updateData['selectedWorkerPhone'] = workerPhone;
+      if (completedAt != null) updateData['completedAt'] = completedAt.toIso8601String();
+      if (cancellationReason != null) updateData['cancellationReason'] = cancellationReason;
+
+      await db.collection('bookings').doc(bookingId).update(updateData);
       lastError = null;
       debugPrint('✅ [Firestore] Booking $bookingId status updated to ${status.name}');
       return true;
@@ -185,10 +177,47 @@ class FirestoreService {
     }
   }
 
+  static Future<bool> updateBookingReview(String bookingId, ReviewModel review) async {
+    final db = _db;
+    if (db == null) return false;
+    try {
+      await db.collection('bookings').doc(bookingId).update({
+        'status': BookingStatus.reviewed.name,
+        'review': review.toMap(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+      lastError = null;
+      debugPrint('✅ [Firestore] Booking $bookingId review saved to Firestore');
+      return true;
+    } catch (e) {
+      lastError = e.toString();
+      debugPrint('❌ [Firestore] updateBookingReview error: $e');
+      return false;
+    }
+  }
+
   static Stream<QuerySnapshot<Map<String, dynamic>>>? streamBookings() {
     final db = _db;
     if (db == null) return null;
-    return db.collection('bookings').orderBy('createdAt', descending: true).snapshots();
+    return db.collection('bookings').snapshots();
+  }
+
+  static Future<bool> sendChatMessage(String bookingId, ChatMessage msg) async {
+    final db = _db;
+    if (db == null) return false;
+    try {
+      await db.collection('bookings').doc(bookingId).collection('messages').doc(msg.id).set(msg.toMap());
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ [Firestore] sendChatMessage error: $e');
+      return false;
+    }
+  }
+
+  static Stream<QuerySnapshot<Map<String, dynamic>>>? streamChatMessages(String bookingId) {
+    final db = _db;
+    if (db == null) return null;
+    return db.collection('bookings').doc(bookingId).collection('messages').orderBy('timestamp', descending: false).snapshots();
   }
 
   // ---------------- WORKER OPERATIONS ----------------

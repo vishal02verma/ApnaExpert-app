@@ -98,7 +98,7 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     final serviceState = Provider.of<ServiceProviderState>(context);
     final user = authProvider.currentUser;
     final worker = serviceState.getWorkerForUser(user);
-    final pendingCount = bookingProvider.getWorkerPendingRequests(worker.id).length;
+    final pendingCount = bookingProvider.getWorkerPendingRequests(worker.id, categoryId: worker.categoryId).length;
 
     final List<Widget> workerPages = [
       _buildWorkerMainTab(context),
@@ -212,8 +212,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     final user = authProvider.currentUser;
     final worker = serviceState.getWorkerForUser(user);
 
-    final pendingRequests = bookingProvider.getWorkerPendingRequests(worker.id);
-    final allJobs = bookingProvider.getWorkerBookings(worker.id);
+    final pendingRequests = bookingProvider.getWorkerPendingRequests(worker.id, categoryId: worker.categoryId);
+    final allJobs = bookingProvider.getWorkerBookings(worker.id, categoryId: worker.categoryId);
     final activeJobs = allJobs.where((b) =>
         b.status == BookingStatus.accepted || b.status == BookingStatus.inProgress).toList();
 
@@ -674,7 +674,12 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                                 ),
                                 onPressed: () {
                                   bookingProvider.updateBookingStatus(
-                                      req.id, BookingStatus.accepted);
+                                    req.id,
+                                    BookingStatus.accepted,
+                                    workerId: worker.id,
+                                    workerName: worker.name,
+                                    workerPhone: worker.phone,
+                                  );
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('Request Accepted! Customer notified.'),
