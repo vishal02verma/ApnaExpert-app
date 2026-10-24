@@ -679,8 +679,8 @@ class _BookingTrackerScreenState extends State<BookingTrackerScreen> {
 
             const SizedBox(height: 16),
 
-            // Live Booking Action Simulation Card
-            _buildInteractiveStatusDemoCard(context, bookingProvider, booking),
+            // Customer Real-time Status Notification Card
+            _buildCustomerLiveStatusCard(context, booking),
 
             const SizedBox(height: 16),
 
@@ -750,99 +750,241 @@ class _BookingTrackerScreenState extends State<BookingTrackerScreen> {
     );
   }
 
-  // Interactive Demo card to trigger statuses for testing/demo
-  Widget _buildInteractiveStatusDemoCard(
+  // Customer-facing real-time status card (Worker actions happen from worker's device)
+  Widget _buildCustomerLiveStatusCard(
     BuildContext context,
-    BookingProvider bookingProvider,
     BookingRequest booking,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Card(
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.blue.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.touch_app, color: AppTheme.primaryLight, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  'Live Booking Action Simulation',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+    switch (booking.status) {
+      case BookingStatus.requested:
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: isDark ? 0.2 : 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.orange.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.8,
+                  color: Colors.orange,
                 ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryLight.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text('Interactive', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                )
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Simulate status transitions (Worker accept, complete service, review):',
-              style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (booking.status == BookingStatus.requested)
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Simulate Worker Accept (Step 6)'),
-                    onPressed: () {
-                      bookingProvider.updateBookingStatus(booking.id, BookingStatus.accepted);
-                    },
-                  ),
-                if (booking.status == BookingStatus.accepted)
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.engineering, size: 16),
-                    label: const Text('Technician Arrived (In Progress)'),
-                    onPressed: () {
-                      bookingProvider.updateBookingStatus(booking.id, BookingStatus.inProgress);
-                    },
-                  ),
-                if (booking.status == BookingStatus.inProgress)
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.secondaryColor),
-                    icon: const Icon(Icons.done_all, size: 16),
-                    label: const Text('Mark Service Done (Step 7)'),
-                    onPressed: () {
-                      bookingProvider.updateBookingStatus(booking.id, BookingStatus.serviceDone);
-                    },
-                  ),
-                if (booking.status == BookingStatus.serviceDone)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondaryColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Request Sent • Waiting for Technician to Accept',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.orange,
+                      ),
                     ),
-                    child: const Text('Service Done! Submit your review below.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                if (booking.status == BookingStatus.reviewed)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Your service order has been broadcasted to verified technicians. As soon as a technician accepts from their device, this screen will update live.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white70 : Colors.grey.shade700,
+                      ),
                     ),
-                    child: const Text('8-Step Journey Fully Complete! Thank you.', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case BookingStatus.accepted:
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.secondaryColor.withValues(alpha: isDark ? 0.2 : 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppTheme.secondaryColor.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryColor.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.two_wheeler_rounded,
+                  color: AppTheme.secondaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${booking.selectedWorkerName ?? "Technician"} is on the way!',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: AppTheme.secondaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'The technician accepted your job. When they arrive at your location, share your 4-digit Security PIN (${booking.securityOtp}) with them to start the work.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white70 : Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case BookingStatus.inProgress:
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: isDark ? 0.2 : 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blue.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.handyman_rounded,
+                  color: Colors.blue,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Work in Progress',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Technician is actively working on the service. Once they finish the work, they will mark it completed from their device.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white70 : Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case BookingStatus.serviceDone:
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppTheme.secondaryColor.withValues(alpha: isDark ? 0.2 : 0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.secondaryColor.withValues(alpha: 0.3)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: AppTheme.secondaryColor, size: 24),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Service completed by technician! Please leave your rating and feedback below.',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppTheme.secondaryColor,
                   ),
-              ],
-            )
-          ],
-        ),
-      ),
-    );
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case BookingStatus.reviewed:
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.amber.withValues(alpha: isDark ? 0.2 : 0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.verified_rounded, color: Colors.amber, size: 24),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Service completed and reviewed. Thank you for choosing ApnaExpert!',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.amber,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case BookingStatus.cancelled:
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: isDark ? 0.2 : 0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.cancel_rounded, color: Colors.red, size: 24),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'This service booking has been cancelled.',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.red,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   // STEP 8: LEAVE REVIEW
