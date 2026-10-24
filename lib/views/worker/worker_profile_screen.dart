@@ -171,21 +171,60 @@ class _WorkerProfileScreenState extends State<WorkerProfileScreen> {
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Available for Immediate Booking Requests'),
-                      subtitle: Text(
-                        worker.isAvailable ? 'Currently Online' : 'Currently Offline',
-                        style: TextStyle(
-                          color: worker.isAvailable ? AppTheme.secondaryColor : Colors.grey,
-                          fontSize: 12,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: worker.isAvailable
+                            ? AppTheme.secondaryColor.withValues(alpha: 0.08)
+                            : Colors.red.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: worker.isAvailable
+                              ? AppTheme.secondaryColor.withValues(alpha: 0.3)
+                              : Colors.red.withValues(alpha: 0.3),
                         ),
                       ),
-                      value: worker.isAvailable,
-                      activeThumbColor: AppTheme.secondaryColor,
-                      onChanged: (val) {
-                        serviceState.toggleWorkerAvailability(worker.id);
-                      },
+                      child: SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Row(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: worker.isAvailable ? AppTheme.secondaryColor : Colors.red,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              worker.isAvailable ? 'Status: ONLINE (Available)' : 'Status: OFFLINE (Unavailable)',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: worker.isAvailable ? AppTheme.secondaryColor : Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: Text(
+                          worker.isAvailable
+                              ? 'Customers can discover and book your services'
+                              : 'Hidden from customer bookings & search results',
+                          style: TextStyle(
+                            color: isDark ? AppTheme.darkSubtitleColor : AppTheme.subtitleColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                        value: worker.isAvailable,
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: AppTheme.secondaryColor,
+                        inactiveThumbColor: Colors.white,
+                        inactiveTrackColor: Colors.grey.shade400,
+                        onChanged: (val) {
+                          serviceState.toggleWorkerAvailability(worker.id);
+                        },
+                      ),
                     ),
                     const Divider(),
                     const SizedBox(height: 8),

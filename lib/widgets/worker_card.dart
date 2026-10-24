@@ -48,23 +48,22 @@ class WorkerCard extends StatelessWidget {
                     foregroundColor: primary,
                     defaultIcon: Icons.engineering_rounded,
                   ),
-                  if (worker.isAvailable)
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: AppTheme.secondaryColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isDark ? const Color(0xFF121212) : Colors.white,
-                            width: 2,
-                          ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: worker.isAvailable ? AppTheme.secondaryColor : Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF121212) : Colors.white,
+                          width: 2,
                         ),
                       ),
-                    )
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(width: 14),
@@ -86,7 +85,23 @@ class WorkerCard extends StatelessWidget {
                         if (worker.isVerified) ...[
                           const SizedBox(width: 4),
                           const Icon(Icons.verified, size: 16, color: Colors.blue),
-                        ]
+                        ],
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: (worker.isAvailable ? AppTheme.secondaryColor : Colors.red).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            worker.isAvailable ? 'Available' : 'Offline',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: worker.isAvailable ? AppTheme.secondaryColor : Colors.red,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 2),

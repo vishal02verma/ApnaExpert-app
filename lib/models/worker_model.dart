@@ -68,4 +68,45 @@ class WorkerModel {
       bio: bio ?? this.bio,
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'userId': userId,
+      'name': name,
+      'phone': phone,
+      'avatarUrl': avatarUrl,
+      'categoryId': categoryId,
+      'categoryName': categoryName,
+      'rating': rating,
+      'totalReviews': totalReviews,
+      'hourlyRate': hourlyRate,
+      'distanceKm': distanceKm,
+      'experience': experience,
+      'isAvailable': isAvailable,
+      'isVerified': isVerified,
+      'bio': bio,
+    };
+  }
+
+  factory WorkerModel.fromMap(Map<String, dynamic> map) {
+    return WorkerModel(
+      id: map['id']?.toString() ?? '',
+      userId: map['userId']?.toString() ?? map['id']?.toString() ?? '',
+      name: map['name']?.toString() ?? 'Service Partner',
+      phone: map['phone']?.toString() ?? '',
+      avatarUrl: map['avatarUrl']?.toString() ?? '',
+      categoryId: map['categoryId']?.toString() ?? 'cat_plumbing',
+      categoryName: map['categoryName']?.toString() ?? 'Plumbing',
+      rating: (map['rating'] is num) ? (map['rating'] as num).toDouble() : 5.0,
+      totalReviews: (map['totalReviews'] is num) ? (map['totalReviews'] as num).toInt() : 0,
+      hourlyRate: (map['hourlyRate'] is num) ? (map['hourlyRate'] as num).toDouble() : 249.0,
+      distanceKm: (map['distanceKm'] is num) ? (map['distanceKm'] as num).toDouble() : 1.0,
+      experience: map['experience']?.toString() ?? 'Verified Professional',
+      isAvailable: map['isAvailable'] == true,
+      isVerified: map['isVerified'] != false,
+      bio: map['bio']?.toString() ?? '',
+    );
+  }
 }
+

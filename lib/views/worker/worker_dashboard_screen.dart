@@ -331,6 +331,41 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
             ),
           ),
 
+          // Offline Warning Ribbon (When technician paused their availability)
+          if (!worker.isAvailable)
+            Container(
+              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off_rounded, color: Colors.red, size: 20),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'You are currently OFFLINE. Customers cannot find you or send job requests.',
+                      style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () => serviceState.toggleWorkerAvailability(worker.id),
+                    child: const Text('Go Online', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+
           // Switch to Customer Mode Banner (Need a Worker at Home?)
           Container(
             margin: const EdgeInsets.only(top: 14),
@@ -447,9 +482,9 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                   borderRadius: BorderRadius.circular(12),
                   onTap: () => setState(() => _currentIndex = 2),
                   child: _buildStatTile(
-                    title: 'Payout Balance',
+                    title: 'Earnings',
                     value: '₹${availableBalance.toStringAsFixed(0)}',
-                    icon: Icons.monetization_on_rounded,
+                    icon: Icons.account_balance_wallet_rounded,
                     color: AppTheme.secondaryColor,
                     isDark: isDark,
                   ),
@@ -750,7 +785,8 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
     required bool isDark,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      height: 86,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF121212) : Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -759,21 +795,27 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
         ),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 4),
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 3),
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
               color: color,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
+          const SizedBox(height: 2),
           Text(
             title,
-            style: const TextStyle(fontSize: 10, color: AppTheme.subtitleColor),
+            style: const TextStyle(fontSize: 10, color: AppTheme.subtitleColor, height: 1.1),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

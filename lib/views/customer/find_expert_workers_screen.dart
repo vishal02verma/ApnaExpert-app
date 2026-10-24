@@ -175,53 +175,66 @@ class _FindExpertWorkersScreenState extends State<FindExpertWorkersScreen> {
 
             // Worker List
             Expanded(
-              child: ListView.separated(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                itemCount: _demoExperts.length + systemWorkers.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 14),
-                itemBuilder: (context, index) {
-                  if (index < _demoExperts.length) {
-                    final item = _demoExperts[index];
-                    if (_searchQuery.isNotEmpty &&
-                        !item['name'].toString().toLowerCase().contains(
-                          _searchQuery.toLowerCase(),
-                        )) {
-                      return const SizedBox.shrink();
-                    }
-                    return _buildWorkerCard(
-                      id: item['id'],
-                      name: item['name'],
-                      roleTitle: 'Expert Home ${widget.categoryTitle}',
-                      rating: item['rating'],
-                      totalJobs: item['totalJobs'],
-                      rate: item['rate'],
-                      imageUrl: item['imageUrl'],
-                      isBookmarked: _bookmarkedWorkerIds.contains(item['id']),
+              child: Builder(
+                builder: (context) {
+                  // Deduplicate demo experts if matched by system worker name
+                  final displayDemoExperts = _demoExperts.where((d) {
+                    return !systemWorkers.any(
+                      (s) => s.name.toLowerCase().trim() == d['name'].toString().toLowerCase().trim(),
                     );
-                  } else {
-                    final worker = systemWorkers[index - _demoExperts.length];
-                    if (_searchQuery.isNotEmpty &&
-                        !worker.name.toLowerCase().contains(
-                          _searchQuery.toLowerCase(),
-                        )) {
-                      return const SizedBox.shrink();
-                    }
-                    return _buildWorkerCard(
-                      id: worker.id,
-                      name: worker.name,
-                      roleTitle: 'Expert Home ${worker.categoryName}',
-                      rating: worker.rating,
-                      totalJobs: worker.totalReviews * 4,
-                      rate: worker.hourlyRate,
-                      imageUrl: worker.avatarUrl,
-                      isBookmarked: _bookmarkedWorkerIds.contains(worker.id),
-                    );
-                  }
+                  }).toList();
+
+                  return ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    itemCount: displayDemoExperts.length + systemWorkers.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 14),
+                    itemBuilder: (context, index) {
+                      if (index < displayDemoExperts.length) {
+                        final item = displayDemoExperts[index];
+                        if (_searchQuery.isNotEmpty &&
+                            !item['name'].toString().toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            )) {
+                          return const SizedBox.shrink();
+                        }
+                        return _buildWorkerCard(
+                          id: item['id'],
+                          name: item['name'],
+                          roleTitle: 'Expert Home ${widget.categoryTitle}',
+                          rating: item['rating'],
+                          totalJobs: item['totalJobs'],
+                          rate: item['rate'],
+                          imageUrl: item['imageUrl'],
+                          isBookmarked: _bookmarkedWorkerIds.contains(item['id']),
+                          isAvailable: true,
+                        );
+                      } else {
+                        final worker = systemWorkers[index - displayDemoExperts.length];
+                        if (_searchQuery.isNotEmpty &&
+                            !worker.name.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            )) {
+                          return const SizedBox.shrink();
+                        }
+                        return _buildWorkerCard(
+                          id: worker.id,
+                          name: worker.name,
+                          roleTitle: 'Expert Home ${worker.categoryName}',
+                          rating: worker.rating,
+                          totalJobs: worker.totalReviews * 4,
+                          rate: worker.hourlyRate,
+                          imageUrl: worker.avatarUrl,
+                          isBookmarked: _bookmarkedWorkerIds.contains(worker.id),
+                          isAvailable: worker.isAvailable,
+                        );
+                      }
+                    },
+                  );
                 },
               ),
             ),
@@ -240,12 +253,33 @@ class _FindExpertWorkersScreenState extends State<FindExpertWorkersScreen> {
     required double rate,
     required String imageUrl,
     required bool isBookmarked,
+    bool isAvailable = true,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
+        if (!isAvailable) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '$name is currently OFFLINE and not taking new booking requests.',
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
         _showBookWorkerDialog(name, roleTitle, rate);
       },
       child: Container(
@@ -267,12 +301,32 @@ class _FindExpertWorkersScreenState extends State<FindExpertWorkersScreen> {
         ),
         child: Row(
           children: [
-            // Technician Square Avatar
-            AppAvatar(
-              avatarUrl: imageUrl,
-              name: name,
-              radius: 40,
-              defaultIcon: Icons.engineering_rounded,
+            // Technician Square Avatar with Online / Offline Badge
+            Stack(
+              children: [
+                AppAvatar(
+                  avatarUrl: imageUrl,
+                  name: name,
+                  radius: 40,
+                  defaultIcon: Icons.engineering_rounded,
+                ),
+                Positioned(
+                  bottom: 2,
+                  right: 2,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: isAvailable ? const Color(0xFF10B981) : Colors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF121212) : Colors.white,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(width: 14),
 
@@ -326,14 +380,38 @@ class _FindExpertWorkersScreenState extends State<FindExpertWorkersScreen> {
 
                   const SizedBox(height: 3),
 
-                  // Role Title (Cyan / Blue Accent)
-                  Text(
-                    roleTitle,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF0284C7),
-                    ),
+                  // Role Title & Availability Tag
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          roleTitle,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF0284C7),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: (isAvailable ? const Color(0xFF10B981) : Colors.red).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          isAvailable ? 'Available' : 'Offline',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isAvailable ? const Color(0xFF10B981) : Colors.red,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 10),

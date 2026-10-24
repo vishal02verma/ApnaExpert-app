@@ -225,31 +225,34 @@ class FirestoreService {
     final db = _db;
     if (db == null) return false;
     try {
-      debugPrint('🔥 [Firestore] Saving worker in "workers/${worker.id}"...');
-      await db.collection('workers').doc(worker.id).set({
-        'id': worker.id,
-        'userId': worker.userId,
-        'name': worker.name,
-        'phone': worker.phone,
-        'avatarUrl': worker.avatarUrl,
-        'categoryId': worker.categoryId,
-        'categoryName': worker.categoryName,
-        'rating': worker.rating,
-        'totalReviews': worker.totalReviews,
-        'hourlyRate': worker.hourlyRate,
-        'distanceKm': worker.distanceKm,
-        'experience': worker.experience,
-        'isAvailable': worker.isAvailable,
-        'isVerified': worker.isVerified,
-        'bio': worker.bio,
-      }, SetOptions(merge: true));
-
+      debugPrint('🔥 [Firestore] Saving worker in "workers/${worker.id}" (isAvailable: ${worker.isAvailable})...');
+      await db.collection('workers').doc(worker.id).set(worker.toMap(), SetOptions(merge: true));
       lastError = null;
-      debugPrint('✅ [Firestore] Worker saved successfully: ${worker.name}');
+      debugPrint('✅ [Firestore] Worker saved successfully: ${worker.name} (isAvailable: ${worker.isAvailable})');
       return true;
     } catch (e) {
       lastError = e.toString();
       debugPrint('❌ [Firestore] saveWorker error: $e');
+      _logHelpfulHint(e.toString());
+      return false;
+    }
+  }
+
+  static Future<bool> updateWorkerAvailability(String workerId, bool isAvailable) async {
+    final db = _db;
+    if (db == null) return false;
+    try {
+      debugPrint('🔥 [Firestore] Updating worker "$workerId" isAvailable -> $isAvailable...');
+      await db.collection('workers').doc(workerId).set({
+        'isAvailable': isAvailable,
+        'updatedAt': DateTime.now().toIso8601String(),
+      }, SetOptions(merge: true));
+      lastError = null;
+      debugPrint('✅ [Firestore] Worker "$workerId" availability updated to $isAvailable');
+      return true;
+    } catch (e) {
+      lastError = e.toString();
+      debugPrint('❌ [Firestore] updateWorkerAvailability error: $e');
       _logHelpfulHint(e.toString());
       return false;
     }

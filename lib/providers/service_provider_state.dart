@@ -1,4 +1,5 @@
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../models/service_category.dart';
@@ -6,6 +7,65 @@ import '../models/worker_model.dart';
 import '../services/firestore_service.dart';
 
 class ServiceProviderState extends ChangeNotifier {
+  StreamSubscription? _workersSubscription;
+
+  ServiceProviderState() {
+    _initFirestoreWorkersSync();
+  }
+
+  void _initFirestoreWorkersSync() {
+    try {
+      final stream = FirestoreService.streamWorkers();
+      if (stream == null) {
+        debugPrint('⚠️ [ServiceProviderState] Firestore workers stream not ready yet. Retrying in 2s...');
+        Future.delayed(const Duration(seconds: 2), _initFirestoreWorkersSync);
+        return;
+      }
+
+      _workersSubscription?.cancel();
+      _workersSubscription = stream.listen((snapshot) {
+        debugPrint('🔥 [ServiceProviderState] Realtime workers snapshot: ${snapshot.docs.length} docs');
+        if (snapshot.docs.isEmpty) return;
+
+        bool changed = false;
+        for (var doc in snapshot.docs) {
+          try {
+            final fw = WorkerModel.fromMap(doc.data());
+            final idx = _workers.indexWhere((w) => w.id == fw.id || (fw.userId.isNotEmpty && w.userId == fw.userId));
+            if (idx != -1) {
+              if (_workers[idx].isAvailable != fw.isAvailable ||
+                  _workers[idx].name != fw.name ||
+                  _workers[idx].avatarUrl != fw.avatarUrl ||
+                  _workers[idx].isVerified != fw.isVerified) {
+                _workers[idx] = fw;
+                changed = true;
+              }
+            } else {
+              _workers.add(fw);
+              changed = true;
+            }
+          } catch (e) {
+            debugPrint('⚠️ [ServiceProviderState] Error parsing worker doc ${doc.id}: $e');
+          }
+        }
+
+        if (changed) {
+          notifyListeners();
+        }
+      }, onError: (err) {
+        debugPrint('❌ [ServiceProviderState] Firestore workers stream error: $err');
+      });
+    } catch (e) {
+      debugPrint('⚠️ [ServiceProviderState] _initFirestoreWorkersSync error: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _workersSubscription?.cancel();
+    super.dispose();
+  }
+
   // Service Categories List
   final List<ServiceCategory> _categories = [
     ServiceCategory(
@@ -221,12 +281,33 @@ class ServiceProviderState extends ChangeNotifier {
 
   // Worker: Toggle Availability
   void toggleWorkerAvailability(String workerId) {
-    final index = _workers.indexWhere((w) => w.id == workerId);
+    final index = _workers.indexWhere((w) => w.id == workerId || w.userId == workerId);
     if (index != -1) {
-      _workers[index] = _workers[index].copyWith(
+      final updated = _workers[index].copyWith(
         isAvailable: !_workers[index].isAvailable,
       );
+      _workers[index] = updated;
       notifyListeners();
+
+      // Cloud persistence: instantly update Firestore so all devices (Web/App) reflect changes
+      FirestoreService.updateWorkerAvailability(updated.id, updated.isAvailable);
+      FirestoreService.saveWorker(updated);
+    }
+  }
+
+  // Worker: Set Availability explicitly
+  void setWorkerAvailability(String workerId, bool isAvailable) {
+    final index = _workers.indexWhere((w) => w.id == workerId || w.userId == workerId);
+    if (index != -1) {
+      final updated = _workers[index].copyWith(
+        isAvailable: isAvailable,
+      );
+      _workers[index] = updated;
+      notifyListeners();
+
+      // Cloud persistence
+      FirestoreService.updateWorkerAvailability(updated.id, updated.isAvailable);
+      FirestoreService.saveWorker(updated);
     }
   }
 
