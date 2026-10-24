@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/booking_request.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../services/invoice_pdf_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/chat_bottom_sheet.dart';
 import '../../widgets/booking_status_stepper.dart';
 import '../../widgets/status_badge.dart';
 
@@ -34,179 +34,6 @@ class _BookingTrackerScreenState extends State<BookingTrackerScreen> {
   void dispose() {
     _reviewController.dispose();
     super.dispose();
-  }
-
-  void _showChatDialog(BuildContext context, BookingRequest booking, BookingProvider bookingProvider, AuthProvider authProvider) {
-    final messageController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final messages = bookingProvider.getMessages(booking.id);
-            final user = authProvider.currentUser;
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                top: 16,
-                left: 16,
-                right: 16,
-              ),
-              child: SizedBox(
-                height: 480,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
-                          child: const Icon(Icons.person, color: AppTheme.primaryColor, size: 20),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Chat with ${booking.selectedWorkerName ?? "Technician"}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                              ),
-                              const Text(
-                                'Live Coordination • In-app safe chat',
-                                style: TextStyle(color: AppTheme.subtitleColor, fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.pop(ctx),
-                        ),
-                      ],
-                    ),
-                    const Divider(),
-                    Expanded(
-                      child: messages.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'No messages yet.\nSend a message to coordinate with technician.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: AppTheme.subtitleColor, fontSize: 13),
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: messages.length,
-                              itemBuilder: (context, idx) {
-                                final msg = messages[idx];
-                                final isMe = msg.isCustomer;
-                                return Align(
-                                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                                  child: Container(
-                                    margin: const EdgeInsets.symmetric(vertical: 4),
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: isMe
-                                          ? AppTheme.primaryColor
-                                          : Colors.grey.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.only(
-                                        topLeft: const Radius.circular(14),
-                                        topRight: const Radius.circular(14),
-                                        bottomLeft: Radius.circular(isMe ? 14 : 2),
-                                        bottomRight: Radius.circular(isMe ? 2 : 14),
-                                      ),
-                                    ),
-                                    constraints: BoxConstraints(
-                                      maxWidth: MediaQuery.of(context).size.width * 0.75,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          msg.text,
-                                          style: TextStyle(
-                                            color: isMe ? Colors.white : null,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color: isMe ? Colors.white70 : Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                    const Divider(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: messageController,
-                            decoration: const InputDecoration(
-                              hintText: 'Type your message...',
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            ),
-                            onSubmitted: (val) {
-                              if (val.trim().isNotEmpty) {
-                                bookingProvider.sendMessage(
-                                  booking.id,
-                                  user.id,
-                                  user.name,
-                                  val,
-                                  true,
-                                );
-                                messageController.clear();
-                                setModalState(() {});
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          style: IconButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                            foregroundColor: Colors.white,
-                          ),
-                          icon: const Icon(Icons.send, size: 18),
-                          onPressed: () {
-                            if (messageController.text.trim().isNotEmpty) {
-                              bookingProvider.sendMessage(
-                                booking.id,
-                                user.id,
-                                user.name,
-                                messageController.text,
-                                true,
-                              );
-                              messageController.clear();
-                              setModalState(() {});
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   void _showCancelDialog(BuildContext context, BookingRequest booking, BookingProvider bookingProvider) {
@@ -384,7 +211,6 @@ class _BookingTrackerScreenState extends State<BookingTrackerScreen> {
   @override
   Widget build(BuildContext context) {
     final bookingProvider = Provider.of<BookingProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primary = isDark ? AppTheme.primaryLight : AppTheme.primaryColor;
 
@@ -609,7 +435,11 @@ class _BookingTrackerScreenState extends State<BookingTrackerScreen> {
                       IconButton(
                         tooltip: 'Message Technician',
                         icon: const Icon(Icons.chat_bubble_outline, color: AppTheme.primaryLight),
-                        onPressed: () => _showChatDialog(context, booking, bookingProvider, authProvider),
+                        onPressed: () => showAppChatBottomSheet(
+                          context,
+                          booking: booking,
+                          isCustomer: true,
+                        ),
                       ),
                       IconButton(
                         tooltip: 'Call Technician',

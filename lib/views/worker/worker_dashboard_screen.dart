@@ -9,6 +9,7 @@ import '../../providers/service_provider_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/app_avatar.dart';
+import '../../widgets/chat_bottom_sheet.dart';
 import 'worker_earnings_screen.dart';
 import 'worker_incoming_requests_screen.dart';
 import 'worker_profile_screen.dart';
@@ -507,6 +508,44 @@ class _WorkerDashboardScreenState extends State<WorkerDashboardScreen> {
                       Text('Customer: ${job.customerName} (${job.customerPhone})'),
                       Text('Address: ${job.address}'),
                       Text('Problem: ${job.problemDescription}'),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                foregroundColor: AppTheme.primaryColor,
+                                side: const BorderSide(color: AppTheme.primaryColor),
+                              ),
+                              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                              label: const Text('Chat with Customer', style: TextStyle(fontSize: 12)),
+                              onPressed: () => showAppChatBottomSheet(
+                                context,
+                                booking: job,
+                                isCustomer: false,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: AppTheme.secondaryColor,
+                              side: const BorderSide(color: AppTheme.secondaryColor),
+                            ),
+                            icon: const Icon(Icons.phone_outlined, size: 16),
+                            label: const Text('Call', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Calling customer ${job.customerName} (${job.customerPhone})...'),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
                       if (job.status == BookingStatus.accepted)
                         SizedBox(
