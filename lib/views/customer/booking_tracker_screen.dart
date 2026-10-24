@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/booking_request.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/booking_provider.dart';
+import '../../services/invoice_pdf_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/booking_status_stepper.dart';
 import '../../widgets/status_badge.dart';
@@ -352,24 +353,27 @@ class _BookingTrackerScreenState extends State<BookingTrackerScreen> {
           ],
         ),
         actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
           OutlinedButton.icon(
-            icon: const Icon(Icons.share, size: 16),
-            label: const Text('Share'),
+            icon: const Icon(Icons.print_outlined, size: 16),
+            label: const Text('Print Preview'),
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Receipt link copied to clipboard!')),
-              );
+              InvoicePdfService.printInvoice(booking);
             },
           ),
           ElevatedButton.icon(
-            icon: const Icon(Icons.download, size: 16),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.secondaryColor,
+            ),
+            icon: const Icon(Icons.download_rounded, size: 16),
             label: const Text('Download PDF'),
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Invoice PDF downloaded to device!')),
-              );
+              InvoicePdfService.downloadOrPrintInvoice(context, booking);
             },
           ),
         ],
