@@ -266,13 +266,15 @@ class _CustomerHistoryScreenState extends State<CustomerHistoryScreen> {
                                         size: 14,
                                       ),
                                       const SizedBox(width: 4),
-                                      Text(
-                                        '${booking.review!.rating} ⭐ - "${booking.review!.comment}"',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontStyle: FontStyle.italic,
+                                      Expanded(
+                                        child: Text(
+                                          '${booking.review!.rating} ⭐ - "${booking.review!.comment}"',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontStyle: FontStyle.italic,
+                                          ),
                                         ),
                                       ),
                                     ],
